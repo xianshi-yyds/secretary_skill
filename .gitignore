@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project Secrets
+.config_secret
+*.wav
+
+# Mac
+.DS_Store

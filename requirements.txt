@@ -1,0 +1,5 @@
+dashscope
+pyaudio
+apscheduler
+requests
+numpy
