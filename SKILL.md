@@ -14,15 +14,20 @@ This skill provides a voice-based personal assistant using Alibaba Cloud's `qwen
         ```bash
         brew install portaudio
         ```
-    -   Install Python packages:
+    -   Install Python packages (ensure you use the correct pip for your environment):
         ```bash
-        pip install -r requirements.txt
+        python -m pip install -r requirements.txt
         ```
-2.  **API Key**:
-    -   Set your Aliyun DashScope API Key:
+2.  **API Key (Secure Access)**:
+    -   **Preferred**: Create a file named `.config_secret` in the project root and paste your API key inside.
+    -   **Alternative**: Set your Aliyun DashScope API Key as an environment variable:
         ```bash
         export DASHSCOPE_API_KEY="your-api-key"
         ```
+    -   *Note: The key is automatically masked in logs for your safety.*
+
+3.  **Mock Mode**:
+    -   If no API Key is found, the system will automatically enter **Mock Mode**. It will print the "Secretary's" dialogue to the console but will not perform real TTS calls or play audio. This is useful for testing logic.
 
 ## Usage
 
