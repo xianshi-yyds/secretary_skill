@@ -1,21 +1,37 @@
+try:
+    import dashscope
+except ImportError:
+    dashscope = None
+
+try:
+    import pyaudio
+except ImportError:
+    pyaudio = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 import os
-import dashscope
-import pyaudio
 import base64
-import numpy as np
 import time
 from typing import Optional
 
 class TTSEngine:
     def __init__(self, api_key: Optional[str] = None):
         # 1. 优先尝试从本地配置文件加载 (推荐，可防止系统 env 扫描)
-        self._raw_api_key = api_key or self._load_from_local_config() or os.getenv("DASHSCOPE_API_KEY")
+        raw_key = api_key or self._load_from_local_config() or os.getenv("DASHSCOPE_API_KEY")
         
-        if not self._raw_api_key:
-            raise ValueError("[Error] API Key (DPI-K) 未找到。请在本地文件或受保护的环境变量中进行配置。")
-        
-        # 2. 对外暴露的 key 属性进行掩码处理，防止被外部侦测或错误打印
-        self.masked_api_key = f"{self._raw_api_key[:6]}***{self._raw_api_key[-4:]}" if len(self._raw_api_key) > 10 else "***"
+        if not raw_key:
+            print("[Warning] API Key 未找到，系统将进入‘Mock 模式’运行。")
+            self.mock_mode = True
+            self._raw_api_key = "MOCK_KEY"
+            self.masked_api_key = "***"
+        else:
+            self.mock_mode = False
+            self._raw_api_key = raw_key
+            self.masked_api_key = f"{self._raw_api_key[:6]}***{self._raw_api_key[-4:]}" if len(self._raw_api_key) > 10 else "***"
         
         # Default configuration for "Caring Secretary"
         self.model = "qwen3-tts-instruct-flash"
@@ -24,15 +40,25 @@ class TTSEngine:
         self.instructions = "语速偏慢，音调温柔甜美，语气治愈温暖，像贴心朋友般关怀，充满耐心和爱心。"
         
         # PyAudio setup for streaming
-        self.p = pyaudio.PyAudio()
+        if not self.mock_mode and pyaudio is None:
+            print("[Warning] PyAudio 未安装，可能无法进行实时语音播放。")
+        
+        try:
+            self.p = pyaudio.PyAudio() if pyaudio else None
+        except Exception:
+            self.p = None
         self.stream = None
 
     def _get_stream(self):
-        if self.stream is None:
-            self.stream = self.p.open(format=pyaudio.paInt16,
-                                     channels=1,
-                                     rate=24000,
-                                     output=True)
+        if self.stream is None and self.p:
+            try:
+                self.stream = self.p.open(format=pyaudio.paInt16,
+                                         channels=1,
+                                         rate=24000,
+                                         output=True)
+            except Exception as e:
+                print(f"[Warning] 无法打开音频流: {e}")
+                self.stream = None
         return self.stream
 
     def speak(self, text: str, stream: bool = True):
@@ -41,6 +67,18 @@ class TTSEngine:
         """
         print(f"Secretary speaking: {text}")
         
+        # Use Beijing endpoint by default
+        dashscope.base_http_api_url = 'https://dashscope.aliyuncs.com/api/v1'
+
+        if self.mock_mode:
+            print(f"[Mock Mode] 🗣️ {text}")
+            time.sleep(1) # 模拟处理时间
+            return "MOCK_AUDIO_URL"
+
+        if dashscope is None:
+            print("[Error] DashScope SDK 未安装，无法执行真实调用。")
+            return None
+
         # Use Beijing endpoint by default
         dashscope.base_http_api_url = 'https://dashscope.aliyuncs.com/api/v1'
 
@@ -57,20 +95,25 @@ class TTSEngine:
 
         if stream:
             audio_stream = self._get_stream()
-            for chunk in response:
-                if chunk.output is not None:
-                    audio = chunk.output.audio
-                    if audio.data is not None:
-                        wav_bytes = base64.b64decode(audio.data)
-                        audio_np = np.frombuffer(wav_bytes, dtype=np.int16)
-                        audio_stream.write(audio_np.tobytes())
-            time.sleep(0.5) # Allow buffer to clear
+            if audio_stream:
+                for chunk in response:
+                    if chunk.output is not None:
+                        audio = chunk.output.audio
+                        if audio.data is not None:
+                            wav_bytes = base64.b64decode(audio.data)
+                            if np:
+                                audio_np = np.frombuffer(wav_bytes, dtype=np.int16)
+                                audio_stream.write(audio_np.tobytes())
+                            else:
+                                audio_stream.write(wav_bytes)
+                time.sleep(0.5) # Allow buffer to clear
+            else:
+                print("[Info] 跳过实时播放（未定义输出设备或处于 Mock 模式）。")
         else:
             # Non-streaming (returns URL)
             if response.status_code == 200:
                 audio_url = response.output.audio.url
                 print(f"Audio URL: {audio_url}")
-                # Optional: Download and play or just provide URL
                 return audio_url
             else:
                 print(f"Error in TTS call: {response.code} (Status code: {response.status_code})")
