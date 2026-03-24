@@ -18,12 +18,13 @@ import base64
 import time
 from typing import Optional
 from dotenv import load_dotenv
+import config
 
 class TTSEngine:
     def __init__(self, api_key: Optional[str] = None):
-        # 1. 优先尝试从本地 .env 配置文件加载 (标准做法)
+        # 1. 优先尝试参数传入，其次从 .env 加载
         load_dotenv()
-        raw_key = api_key or os.getenv("DASHSCOPE_API_KEY")
+        raw_key = api_key or config.DASHSCOPE_API_KEY
         
         if not raw_key:
             print("[Warning] API Key 未找到，系统将进入‘Mock 模式’运行。")
@@ -35,11 +36,12 @@ class TTSEngine:
             self._raw_api_key = raw_key
             self.masked_api_key = f"{self._raw_api_key[:6]}***{self._raw_api_key[-4:]}" if len(self._raw_api_key) > 10 else "***"
         
-        # Default configuration for "Caring Secretary"
-        self.model = "qwen3-tts-instruct-flash"
-        self.voice = "Cherry" # Cherry (芊悦) - 阳光积极、亲切自然小姐姐
-        self.language = "Chinese"
-        self.instructions = "语速偏慢，音调温柔甜美，语气治愈温暖，像贴心朋友般关怀，充满耐心和爱心。"
+        # Configuration from config.py
+        self.model = config.TTS_MODEL
+        self.voice = config.TTS_VOICE
+        self.language = config.TTS_LANGUAGE
+        self.speech_rate = config.TTS_SPEECH_RATE
+        self.instructions = config.TTS_INSTRUCTIONS
         
         # PyAudio setup for streaming
         if not self.mock_mode and pyaudio is None:
@@ -92,7 +94,10 @@ class TTSEngine:
             language_type=self.language,
             instructions=self.instructions,
             optimize_instructions=True,
-            stream=stream
+            stream=stream,
+            parameters={
+                "speech_rate": self.speech_rate
+            }
         )
 
         if stream:
