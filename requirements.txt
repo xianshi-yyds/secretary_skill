@@ -3,3 +3,4 @@ pyaudio
 apscheduler
 requests
 numpy
+python-dotenv

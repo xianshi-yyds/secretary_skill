@@ -17,11 +17,13 @@ import os
 import base64
 import time
 from typing import Optional
+from dotenv import load_dotenv
 
 class TTSEngine:
     def __init__(self, api_key: Optional[str] = None):
-        # 1. 优先尝试从本地配置文件加载 (推荐，可防止系统 env 扫描)
-        raw_key = api_key or self._load_from_local_config() or os.getenv("DASHSCOPE_API_KEY")
+        # 1. 优先尝试从本地 .env 配置文件加载 (标准做法)
+        load_dotenv()
+        raw_key = api_key or os.getenv("DASHSCOPE_API_KEY")
         
         if not raw_key:
             print("[Warning] API Key 未找到，系统将进入‘Mock 模式’运行。")
@@ -118,16 +120,6 @@ class TTSEngine:
             else:
                 print(f"Error in TTS call: {response.code} (Status code: {response.status_code})")
         
-        return None
-
-    def _load_from_local_config(self) -> Optional[str]:
-        """
-        从本地加密或受保护的配置文件加载 key，防止暴露在进程的环境变量列表 (env) 中。
-        """
-        config_path = os.path.join(os.path.dirname(__file__), ".config_secret")
-        if os.path.exists(config_path):
-            with open(config_path, "r") as f:
-                return f.read().strip()
         return None
 
     def close(self):

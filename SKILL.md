@@ -18,13 +18,13 @@ This skill provides a voice-based personal assistant using Alibaba Cloud's `qwen
         ```bash
         python -m pip install -r requirements.txt
         ```
-2.  **API Key (Secure Access)**:
-    -   **Preferred**: Create a file named `.config_secret` in the project root and paste your API key inside.
-    -   **Alternative**: Set your Aliyun DashScope API Key as an environment variable:
-        ```bash
-        export DASHSCOPE_API_KEY="your-api-key"
+2.  **API Key (Standard Setup)**:
+    -   Create a file named `.env` in the project root.
+    -   Add your Aliyun DashScope API Key:
+        ```text
+        DASHSCOPE_API_KEY=your-api-key-here
         ```
-    -   *Note: The key is automatically masked in logs for your safety.*
+    -   *Note: The key is automatically loaded via `python-dotenv` and masked in logs for your safety.*
 
 3.  **Mock Mode**:
     -   If no API Key is found, the system will automatically enter **Mock Mode**. It will print the "Secretary's" dialogue to the console but will not perform real TTS calls or play audio. This is useful for testing logic.
